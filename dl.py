@@ -1,24 +1,79 @@
-from sklearn.datasets import load_digits
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import Perceptron
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras import models, layers
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
-# Load dataset
-digits = load_digits()
+# Load MNIST dataset
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
 
-X = digits.data
-y = digits.target
+# Normalize pixel values (0-255 -> 0-1)
+x_train = x_train / 255.0
+x_test = x_test / 255.0
 
-# Split data
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
+# Build the DNN model
+model = models.Sequential([
+    layers.Flatten(input_shape=(28, 28)),
+    layers.Dense(128, activation='relu'),
+    layers.Dense(64, activation='relu'),
+    layers.Dense(10, activation='softmax')
+])
+
+# Compile the model
+model.compile(
+    optimizer='adam',
+    loss='sparse_categorical_crossentropy',
+    metrics=['accuracy']
 )
 
-# Train perceptron
-model = Perceptron(max_iter=1000)
-model.fit(X_train, y_train)
+# Train the model
+model.fit(x_train, y_train, epochs=5, batch_size=32)
 
-# Predict first test sample
-prediction = model.predict([X_test[0]])
+# Evaluate the model
+test_loss, test_accuracy = model.evaluate(x_test, y_test)
+print("\nTest Accuracy:", test_accuracy)
 
-print("Predicted Digit:", prediction[0])
-print("Actual Digit   :", y_test[0])
+# Predict the test set
+y_pred = model.predict(x_test)
+y_pred = np.argmax(y_pred, axis=1)
+
+# Create confusion matrix
+cm = confusion_matrix(y_test, y_pred)
+
+# Display confusion matrix
+disp = ConfusionMatrixDisplay(
+    confusion_matrix=cm,
+    display_labels=range(10)
+)
+
+disp.plot(cmap=plt.cm.Blues)
+plt.title("Confusion Matrix")
+plt.show()
+
+# Alternative Confusion Matrix using Seaborn
+plt.figure(figsize=(8,6))
+sns.heatmap(
+    cm,
+    annot=True,
+    fmt='d',
+    cmap='Blues',
+    xticklabels=range(10),
+    yticklabels=range(10)
+)
+
+plt.xlabel("Predicted Label")
+plt.ylabel("True Label")
+plt.title("Confusion Matrix (Seaborn)")
+plt.show()
+
+# Display a few predictions
+plt.figure(figsize=(12,6))
+for i in range(10):
+    plt.subplot(2,5,i+1)
+    plt.imshow(x_test[i], cmap='gray')
+    plt.title(f"True: {y_test[i]}\nPred: {y_pred[i]}")
+    plt.axis('off')
+
+plt.tight_layout()
+plt.show()
